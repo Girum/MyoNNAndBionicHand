@@ -1,0 +1,1 @@
+arquivos  de hardware
