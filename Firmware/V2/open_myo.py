@@ -105,6 +105,7 @@ class Device(btle.DefaultDelegate):
             self.on_emg(np.asarray(emg_raw))
             emg0 = False
             emg1 = True
+            print("EMG0")
         elif((cHandle == ReadHandle.EMG1) and emg1):
             emg_raw = []
             emg1 = struct.unpack('<8b', data[:8])
@@ -114,6 +115,7 @@ class Device(btle.DefaultDelegate):
             self.on_emg(np.asarray(emg_raw))
             emg1 = False
             emg2 = True
+            print("EMG1")
         elif((cHandle == ReadHandle.EMG2) and emg2):
             emg_raw = []
             emg1 = struct.unpack('<8b', data[:8])
@@ -123,6 +125,7 @@ class Device(btle.DefaultDelegate):
             self.on_emg(np.asarray(emg_raw))
             emg2 = False
             emg3 = True
+            print("EMG2")
         elif((cHandle == ReadHandle.EMG3) and emg3):
             emg_raw = []
             emg1 = struct.unpack('<8b', data[:8])
@@ -131,7 +134,8 @@ class Device(btle.DefaultDelegate):
             emg_raw.extend(emg2)
             self.on_emg(np.asarray(emg_raw))
             emg3 = False
-            emg0 = True    
+            emg0 = True
+            print("EMG3")
         # Notification handle of the EMG data characteristic (filtered)
         elif cHandle == ReadHandle.EMG_FILT:
             emg_filt = struct.unpack('<8H', data[:16])

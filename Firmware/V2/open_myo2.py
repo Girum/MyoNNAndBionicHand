@@ -5,11 +5,6 @@ from enum import Enum
 from bluepy import btle
 import numpy as np
 
-emg0 = True
-emg1 = False
-emg2 = False
-emg3 = False
-
 class Services(btle.Peripheral):
     # Bluepy's Peripheral class encapsulates a connection to a Bluetooth LE peripheral
     def __init__(self, mac):
@@ -75,7 +70,6 @@ class Services(btle.Peripheral):
 class Device(btle.DefaultDelegate):
     # bluepy functions which receive Bluetooth messages asynchronously,
     # such as notifications, indications, and advertising data
-    
     def __init__(self, mac=None):
         btle.DefaultDelegate.__init__(self)
         self.services = Services(mac=get_myo(mac))
@@ -88,55 +82,34 @@ class Device(btle.DefaultDelegate):
         self.battery_event_handlers = []
 
     def handleNotification(self, cHandle, data):
-        global emg0, emg1, emg2, emg3
         # Notification handles of the 4 EMG data characteristics (raw)
-        #if cHandle == ReadHandle.EMG0 or cHandle == ReadHandle.EMG1 or cHandle == ReadHandle.EMG2 or cHandle == ReadHandle.EMG3:
-        '''According to http://developerblog.myo.com/myocraft-emg-in-the-bluetooth-protocol/
-        each characteristic sends two secuential readings in each update,
-        so the received payload is split in two samples. According to the
-        Myo BLE specification, the data type of the EMG samples is int8_t.
-        '''            
-        if((cHandle == ReadHandle.EMG0) and emg0):
+        if cHandle == ReadHandle.EMG0 or cHandle == ReadHandle.EMG1 or cHandle == ReadHandle.EMG2 or cHandle == ReadHandle.EMG3:
+            '''According to http://developerblog.myo.com/myocraft-emg-in-the-bluetooth-protocol/
+            each characteristic sends two secuential readings in each update,
+            so the received payload is split in two samples. According to the
+            Myo BLE specification, the data type of the EMG samples is int8_t.
+            '''
             emg_raw = []
+            #emg1 = np.asarray(struct.unpack('<8b', data[:8]))
+            #emg2 = np.asarray(struct.unpack('<8b', data[8:]))
             emg1 = struct.unpack('<8b', data[:8])
             emg2 = struct.unpack('<8b', data[8:])
+            #emg_raw = np.sum([emg1,emg2], axis=0)
             emg_raw.extend(emg1)
             emg_raw.extend(emg2)
             self.on_emg(np.asarray(emg_raw))
-            emg0 = False
-            emg1 = True
-        elif((cHandle == ReadHandle.EMG1) and emg1):
-            emg_raw = []
-            emg1 = struct.unpack('<8b', data[:8])
-            emg2 = struct.unpack('<8b', data[8:])
-            emg_raw.extend(emg1)
-            emg_raw.extend(emg2)
-            self.on_emg(np.asarray(emg_raw))
-            emg1 = False
-            emg2 = True
-        elif((cHandle == ReadHandle.EMG2) and emg2):
-            emg_raw = []
-            emg1 = struct.unpack('<8b', data[:8])
-            emg2 = struct.unpack('<8b', data[8:])
-            emg_raw.extend(emg1)
-            emg_raw.extend(emg2)
-            self.on_emg(np.asarray(emg_raw))
-            emg2 = False
-            emg3 = True
-        elif((cHandle == ReadHandle.EMG3) and emg3):
-            emg_raw = []
-            emg1 = struct.unpack('<8b', data[:8])
-            emg2 = struct.unpack('<8b', data[8:])
-            emg_raw.extend(emg1)
-            emg_raw.extend(emg2)
-            self.on_emg(np.asarray(emg_raw))
-            emg3 = False
-            emg0 = True    
+            '''if cHandle == ReadHandle.EMG0:
+                print("EMG0")
+            elif cHandle == ReadHandle.EMG1:
+                print("EMG1")
+            elif cHandle == ReadHandle.EMG2:
+                print("EMG2")
+            elif cHandle == ReadHandle.EMG3:
+                print("EMG3")'''
         # Notification handle of the EMG data characteristic (filtered)
         elif cHandle == ReadHandle.EMG_FILT:
             emg_filt = struct.unpack('<8H', data[:16])
             self.on_emg(emg_filt)
-            #print("EMG_FILT")
         # Notification handle of the IMU data characteristic
         elif cHandle == ReadHandle.IMU:
             values = struct.unpack('<10h', data)
@@ -144,7 +117,6 @@ class Device(btle.DefaultDelegate):
             acc = [x/2048.0 for x in values[4:7]]
             gyro = [x/16.0 for x in values[7:10]]
             self.on_imu(quat, acc, gyro)
-            #print("IMU")
         # Notification handle of the classifier data characteristic
         elif cHandle == ReadHandle.CLASSIFIER:
             event_type, value, x_direction, _, _, _ = struct.unpack('<6B', data)
@@ -156,14 +128,12 @@ class Device(btle.DefaultDelegate):
                 self.on_classifier(Pose(value))
             elif event_type == ClassifierEventType.SYNC_FAILED:
                 print("Sync failed, please perform sync gesture.")
-            #print("CLASSIFIER")
         # Notification handle of the battery data characteristic
         elif cHandle == ReadHandle.BATTERY:
             batt = ord(data)
             self.on_battery(batt)
-            #print("BATTERY")
-        #else:
-            #print('CASO NAO VENHA NADA CERTO - Data with unknown attr: %02X' % cHandle)
+        else:
+            print('Data with unknown attr: %02X' % cHandle)
 
     def add_emg_event_handler(self, event_handler):
         self.emg_event_handlers.append(event_handler)
